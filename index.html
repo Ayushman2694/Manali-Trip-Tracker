@@ -7,18 +7,19 @@
 <meta name="description" content="A beautiful shared-style expense tracker for your Manali trip.">
 <title>Manali Trip Split</title>
 <style>
-:root{--bg:#f2f5f2;--card:#fff;--ink:#142d29;--muted:#72827b;--green:#1d604c;--line:#e4ebe5;--soft:#eaf3ed;--red:#b84b43;--gold:#e7c58c}
+:root{color-scheme:light;--bg:#f2f5f2;--card:#fff;--ink:#142d29;--muted:#72827b;--green:#1d604c;--line:#e4ebe5;--soft:#eaf3ed;--red:#b84b43;--gold:#e7c58c;--input:#fbfdfb;--check:#f4f8f4;--shadow:rgba(31,67,49,.045)}
+body.dark{color-scheme:dark;--bg:#111a18;--card:#1b2925;--ink:#e7f0eb;--muted:#a2b2aa;--green:#83c5a5;--line:#35453e;--soft:#263b31;--red:#ff9187;--gold:#e7c58c;--input:#17231f;--check:#22332c;--shadow:rgba(0,0,0,.18);background:linear-gradient(180deg,#172521 0,#111a18 360px)}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:linear-gradient(180deg,#e9f0eb 0,#f4f6f3 360px);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 main{max-width:650px;margin:auto;padding:14px 14px 38px}.hero{position:relative;overflow:hidden;min-height:270px;display:flex;flex-direction:column;justify-content:flex-end;color:white;padding:24px 21px;border-radius:26px;margin-bottom:17px;background:linear-gradient(180deg,rgba(7,28,29,.08) 0%,rgba(7,28,29,.18) 35%,rgba(7,28,29,.86) 100%),url('https://instahimachal.com/wp-content/uploads/2022/05/view-of-the-seven-sisters-Peak-Mountains-Solang-Valley-Manali-2048x1152.jpeg') center 48%/cover,#244b45;box-shadow:0 14px 32px rgba(25,57,45,.18)}
 .hero:before{content:"";position:absolute;inset:0;border:1px solid rgba(255,255,255,.18);border-radius:inherit;pointer-events:none}.hero>*{position:relative}.eyebrow{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#e8d4ad;font-weight:750}.hero h1{font-size:31px;line-height:1.08;margin:9px 0 8px;letter-spacing:-.8px;text-shadow:0 2px 12px #142b2b}.hero p{margin:0;color:#edf4f0;font-size:13px;line-height:1.5;max-width:310px}.hero-tag{position:absolute;top:16px;right:16px;background:rgba(15,42,37,.48);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.24);border-radius:30px;padding:7px 11px;font-size:11px;color:white}
 .photo-strip{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;margin:0 1px 16px}.photo{height:105px;border-radius:17px;overflow:hidden;position:relative;background:#c9d9d0}.photo img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}.photo:after{content:"";position:absolute;inset:35% 0 0;background:linear-gradient(transparent,rgba(0,0,0,.58))}.photo span{position:absolute;z-index:1;bottom:10px;left:11px;color:white;font-size:12px;font-weight:700;text-shadow:0 1px 5px #222}
-.summary{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:14px 0}.stat,.panel{background:var(--card);border:1px solid rgba(222,232,224,.9);border-radius:19px;padding:16px;box-shadow:0 5px 18px rgba(31,67,49,.045)}.stat{position:relative;overflow:hidden}.stat:after{content:"";position:absolute;width:64px;height:64px;border-radius:50%;background:#edf5ef;right:-20px;top:-20px}.stat small{display:block;color:var(--muted);font-size:11px;font-weight:650;position:relative;z-index:1}.stat strong{display:block;font-size:23px;margin-top:7px;letter-spacing:-.5px;position:relative;z-index:1}.panel{margin:13px 0}.panel h2{font-size:16px;letter-spacing:-.2px;margin:0 0 14px;display:flex;align-items:center;gap:7px}.field{margin:10px 0}.field label{display:block;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;letter-spacing:.2px}input,select,button{font:inherit}input,select{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfdfb;color:var(--ink);min-height:46px;outline:none;transition:border .2s,box-shadow .2s}input:focus,select:focus{border-color:#7aa58c;box-shadow:0 0 0 3px rgba(66,130,91,.1)}button{border:0;border-radius:12px;padding:12px 15px;background:linear-gradient(135deg,#246c53,#174d3c);color:#fff;font-weight:700;min-height:45px;cursor:pointer;box-shadow:0 4px 10px rgba(29,96,76,.13);transition:transform .15s,filter .15s}button:active{transform:scale(.98)}.secondary{background:#edf5ef;color:var(--green);box-shadow:none}.danger{background:#faeeec;color:var(--red);box-shadow:none}.full{width:100%;margin-top:5px}.row{display:flex;gap:8px;align-items:center}.row>*{flex:1;min-width:0}.person{display:flex;align-items:center;gap:8px;margin:8px 0}.person input{flex:1}.person button{flex:0 0 42px;padding:8px}.checks{display:flex;flex-wrap:wrap;gap:7px}.check{display:flex;align-items:center;gap:6px;background:#f4f8f4;border:1px solid var(--line);border-radius:22px;padding:8px 10px;font-size:12px}.check input{width:16px;min-height:16px;margin:0;accent-color:var(--green)}.expense{padding:13px 0;border-bottom:1px solid var(--line)}.expense:last-child{border:0}.expense-top{display:flex;justify-content:space-between;gap:10px}.expense strong{font-size:14px}.expense small{display:block;color:var(--muted);margin-top:5px;line-height:1.5;font-size:11px}.amount{font-weight:800;white-space:nowrap;color:var(--green)}.balance{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}.balance:last-child{border:0}.positive{color:var(--green)}.negative{color:var(--red)}.empty{color:var(--muted);font-size:12px;padding:8px 0}.hint{font-size:11px;color:var(--muted);line-height:1.55}.actions{display:flex;gap:8px;margin-top:12px}.actions button{flex:1;font-size:11px;padding:10px 8px}.pill{display:inline-block;border-radius:20px;padding:4px 8px;background:var(--soft);color:var(--green);font-size:10px;margin-left:auto}.section-kicker{font-size:10px;color:#8b9a91;letter-spacing:1.4px;text-transform:uppercase;font-weight:800;margin:2px 3px 8px}.footer-note{text-align:center;color:#8b9991;font-size:10px;padding:8px 0 0}
+.summary{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:14px 0}.stat,.panel{background:var(--card);border:1px solid var(--line);border-radius:19px;padding:16px;box-shadow:0 5px 18px var(--shadow)}.stat{position:relative;overflow:hidden}.stat:after{content:"";position:absolute;width:64px;height:64px;border-radius:50%;background:#edf5ef;right:-20px;top:-20px}.stat small{display:block;color:var(--muted);font-size:11px;font-weight:650;position:relative;z-index:1}.stat strong{display:block;font-size:23px;margin-top:7px;letter-spacing:-.5px;position:relative;z-index:1}.panel{margin:13px 0}.panel h2{font-size:16px;letter-spacing:-.2px;margin:0 0 14px;display:flex;align-items:center;gap:7px}.field{margin:10px 0}.field label{display:block;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;letter-spacing:.2px}input,select,button{font:inherit}input,select{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--input);color:var(--ink);min-height:46px;outline:none;transition:border .2s,box-shadow .2s}input:focus,select:focus{border-color:#7aa58c;box-shadow:0 0 0 3px rgba(66,130,91,.1)}button{border:0;border-radius:12px;padding:12px 15px;background:linear-gradient(135deg,#246c53,#174d3c);color:#fff;font-weight:700;min-height:45px;cursor:pointer;box-shadow:0 4px 10px rgba(29,96,76,.13);transition:transform .15s,filter .15s}button:active{transform:scale(.98)}.secondary{background:#edf5ef;color:var(--green);box-shadow:none}.danger{background:#faeeec;color:var(--red);box-shadow:none}.full{width:100%;margin-top:5px}.row{display:flex;gap:8px;align-items:center}.row>*{flex:1;min-width:0}.person{display:flex;align-items:center;gap:8px;margin:8px 0}.person input{flex:1}.person button{flex:0 0 42px;padding:8px}.checks{display:flex;flex-wrap:wrap;gap:7px}.check{display:flex;align-items:center;gap:6px;background:var(--check);border:1px solid var(--line);border-radius:22px;padding:8px 10px;font-size:12px}.check input{width:16px;min-height:16px;margin:0;accent-color:var(--green)}.expense{padding:13px 0;border-bottom:1px solid var(--line)}.expense:last-child{border:0}.expense-top{display:flex;justify-content:space-between;gap:10px}.expense strong{font-size:14px}.expense small{display:block;color:var(--muted);margin-top:5px;line-height:1.5;font-size:11px}.amount{font-weight:800;white-space:nowrap;color:var(--green)}.balance{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}.balance:last-child{border:0}.positive{color:var(--green)}.negative{color:var(--red)}.empty{color:var(--muted);font-size:12px;padding:8px 0}.hint{font-size:11px;color:var(--muted);line-height:1.55}.actions{display:flex;gap:8px;margin-top:12px}.actions button{flex:1;font-size:11px;padding:10px 8px}.pill{display:inline-block;border-radius:20px;padding:4px 8px;background:var(--soft);color:var(--green);font-size:10px;margin-left:auto}.section-kicker{font-size:10px;color:#8b9a91;letter-spacing:1.4px;text-transform:uppercase;font-weight:800;margin:2px 3px 8px}.theme-toggle{position:absolute;top:16px;left:16px;z-index:2;min-height:36px;padding:7px 11px;border:1px solid rgba(255,255,255,.28);background:rgba(15,42,37,.55);backdrop-filter:blur(10px);box-shadow:none;font-size:12px}.detail-table{width:100%;border-collapse:collapse;font-size:12px}.detail-table th,.detail-table td{padding:10px 5px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}.detail-table th:first-child,.detail-table td:first-child{text-align:left}.detail-table th{color:var(--muted);font-size:10px}.detail-table tr:last-child td{border-bottom:0}.footer-note{text-align:center;color:#8b9991;font-size:10px;padding:8px 0 0}
 @media(min-width:520px){.hero{min-height:310px}.photo{height:130px}}
 </style>
 </head>
 <body>
 <main>
- <header class="hero"><div class="hero-tag">Himachal Pradesh · India</div><div class="eyebrow">The getaway crew · 2026</div><h1>Manali Trip<br>Split the memories,<br>not the bills.</h1><p>One trip. One group. Every expense in one place.</p></header>
+ <header class="hero"><button class="theme-toggle" id="themeToggle" type="button">☾ Dark mode</button><div class="hero-tag">Himachal Pradesh · India</div><div class="eyebrow">The getaway crew · 2026</div><h1>Manali Trip<br>Split the memories,<br>not the bills.</h1><p>One trip. One group. Every expense in one place.</p></header>
  <div class="section-kicker">A little mountain inspiration</div>
  <section class="photo-strip" aria-label="Manali scenery">
   <div class="photo"><img src="https://images.unsplash.com/photo-1620302730622-e88226c09315?auto=format&fit=crop&w=900&q=82" alt="Snowy Himalayan peaks and pine forest" loading="lazy"><span>🏔️ Himalayan views</span></div>
@@ -28,6 +29,11 @@ main{max-width:650px;margin:auto;padding:14px 14px 38px}.hero{position:relative;
  <section class="summary">
   <div class="stat"><small>Total trip expenses</small><strong id="total">₹0</strong></div>
   <div class="stat"><small>Per person average</small><strong id="average">₹0</strong></div>
+ </section>
+ <section class="panel" id="personSummaryPanel">
+  <h2>📊 Per-person expense breakdown</h2>
+  <div id="personSummary" class="empty">Add travellers and expenses to see each person’s exact share.</div>
+  <p class="hint">Expense share is what each person owes for trip costs. Paid is what they contributed to expenses. Balance includes recorded repayments.</p>
  </section>
  <section class="panel">
   <h2>👥 Travellers</h2>
@@ -88,7 +94,11 @@ const TRIP_DOC = "trips/manali2026";
 const $ = id => document.getElementById(id);
 const money = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits:2});
 let state = {people:['You','Friend 1','Friend 2','Friend 3'], expenses:[], payments:[]};
-let tripRef, ready = false, applyingRemote = false, tripUnsubscribe = null;
+let tripRef, ready = false, applyingRemote = false;
+let contributionDraft = {};
+function applyTheme(theme) { document.body.classList.toggle('dark', theme === 'dark'); const b=$('themeToggle'); if(b) b.textContent = theme === 'dark' ? '☀ Light mode' : '☾ Dark mode'; try { localStorage.setItem('manaliTheme', theme); } catch(e) {} }
+try { applyTheme(localStorage.getItem('manaliTheme') || 'light'); } catch(e) { applyTheme('light'); }
+$('themeToggle').onclick = () => applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
 
 function setSyncStatus(message, isError=false) {
   const el = $('syncStatus');
@@ -127,16 +137,44 @@ function selectedContributors() {
 function renderContributionInputs() {
   const selected = selectedContributors();
   const mode = $('contributionMode').value;
+  const amountInput = $('amount');
+  if (mode === 'manual') {
+    amountInput.readOnly = true;
+    amountInput.placeholder = 'Calculated from contributions';
+  } else {
+    amountInput.readOnly = false;
+    amountInput.placeholder = '0';
+  }
   $('contributorAmounts').innerHTML = selected.length ? selected.map((person, i) => {
-    const equalValue = selected.length ? (Number($('amount').value || 0) / selected.length) : 0;
+    const equalValue = selected.length ? (Number(amountInput.value || 0) / selected.length) : 0;
+    const value = mode === 'equal'
+      ? (amountInput.value ? equalValue.toFixed(2) : '')
+      : (contributionDraft[person] ?? '');
     return `<div class="row" style="margin:7px 0;align-items:center">
       <label style="flex:1;font-size:12px;color:var(--ink)">${safe(person)}</label>
-      <input aria-label="Contribution by ${safe(person)}" data-contribution="${safe(person)}" type="number" min="0" step="0.01" inputmode="decimal" placeholder="₹0.00" value="${mode==='equal' && $('amount').value ? (equalValue.toFixed(2)) : ''}" ${mode==='equal'?'readonly':''} style="max-width:155px">
+      <input aria-label="Contribution by ${safe(person)}" data-contribution="${safe(person)}" type="number" min="0" step="0.01" inputmode="decimal" placeholder="₹0.00" value="${value}" ${mode==='equal'?'readonly':''} style="max-width:155px">
     </div>`;
   }).join('') : '<p class="empty">Select at least one contributor.</p>';
+  if (mode === 'manual') {
+    document.querySelectorAll('[data-contribution]').forEach(input => input.addEventListener('input', () => {
+      contributionDraft[input.dataset.contribution] = input.value;
+      const sum = [...document.querySelectorAll('[data-contribution]')].reduce((n, el) => n + (Number(el.value) || 0), 0);
+      amountInput.value = sum ? sum.toFixed(2) : '';
+    }));
+    const sum = selected.reduce((n, person) => n + (Number(contributionDraft[person]) || 0), 0);
+    amountInput.value = sum ? sum.toFixed(2) : '';
+  }
   $('contributionHint').textContent = mode === 'equal'
-    ? 'The total amount is divided equally between the selected contributors.'
-    : 'Enter each contribution. The sum must equal the total expense amount.';
+    ? 'Enter the total expense. It will be divided equally between selected contributors.'
+    : 'Enter each contribution. The total expense amount above is calculated automatically.';
+}
+function netBalanceForPerson(person, shares, paid, payments) {
+  let balance = (paid[person] || 0) - (shares[person] || 0);
+  payments.forEach(p => {
+    if (p.from === person) balance += Number(p.amount || 0);
+    if (p.to === person) balance -= Number(p.amount || 0);
+  });
+  return balance;
 }
 function render() {
   $('people').innerHTML = state.people.map((p,i) =>
@@ -180,6 +218,26 @@ function render() {
   $('total').textContent = money(total);
   $('average').textContent = money(state.people.length ? total/state.people.length : 0);
   $('expenseCount').textContent = state.expenses.length + ' items';
+
+  // Exact per-person expense share and amount contributed to expenses.
+  const shares = Object.fromEntries(state.people.map(p => [p, 0]));
+  const paid = Object.fromEntries(state.people.map(p => [p, 0]));
+  state.expenses.forEach(e => {
+    const split = (e.split || []).filter(p => shares[p] !== undefined);
+    if (split.length) split.forEach(person => { shares[person] += Number(e.amount || 0) / split.length; });
+    const contributors = (e.contributors && e.contributors.length)
+      ? e.contributors : [{person:e.payer, amount:Number(e.amount || 0)}];
+    contributors.forEach(c => { if (paid[c.person] !== undefined) paid[c.person] += Number(c.amount || 0); });
+  });
+  $('personSummary').innerHTML = state.people.length ? `
+    <div style="overflow-x:auto"><table class="detail-table">
+      <thead><tr><th>Person</th><th>Expense share</th><th>Paid</th><th>Net balance</th></tr></thead>
+      <tbody>${state.people.map(person => {
+        const balance = netBalanceForPerson(person, shares, paid, state.payments);
+        return `<tr><td><strong>${safe(person)}</strong></td><td>${money(shares[person])}</td><td>${money(paid[person])}</td><td><strong class="${balance>=0?'positive':'negative'}">${balance>=0?'+':'−'}${money(Math.abs(balance))}</strong></td></tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr><td><strong>Total</strong></td><td><strong>${money(Object.values(shares).reduce((a,b)=>a+b,0))}</strong></td><td><strong>${money(Object.values(paid).reduce((a,b)=>a+b,0))}</strong></td><td></td></tr></tfoot>
+    </table></div>` : '<p class="empty">Add travellers and expenses to see the breakdown.</p>';
 
   $('expenses').innerHTML = state.expenses.length ? state.expenses.slice().reverse().map(e => {
     const contribs = (e.contributors && e.contributors.length)
@@ -254,7 +312,7 @@ function render() {
 }
 
 $('amount').addEventListener('input', () => { if ($('contributionMode').value === 'equal') renderContributionInputs(); });
-$('contributionMode').addEventListener('change', renderContributionInputs);
+$('contributionMode').addEventListener('change', () => { contributionDraft = {}; renderContributionInputs(); });
 
 $('addPerson').onclick = () => {
   const v = $('newPerson').value.trim();
@@ -289,7 +347,7 @@ $('addExpense').onclick = () => {
     id:String(Date.now())+Math.random().toString(16).slice(2),
     desc, amount:Number(total.toFixed(2)), contributors, payer:contributors[0].person, split
   });
-  $('desc').value=''; $('amount').value='';
+  $('desc').value=''; $('amount').value=''; contributionDraft = {};
   render(); save();
 };
 
@@ -299,65 +357,12 @@ $('export').onclick = () => {
 };
 $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async e => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-
-  let imported;
   try {
-    const parsed = JSON.parse(await file.text());
-    if (!parsed || !Array.isArray(parsed.people) || !Array.isArray(parsed.expenses)) {
-      throw new Error('The selected JSON does not contain valid people and expenses arrays.');
-    }
-    imported = normaliseState(parsed);
-    if (!Array.isArray(imported.payments)) imported.payments = [];
-    if (imported.people.length > 30 || imported.expenses.length > 500 || imported.payments.length > 500) {
-      throw new Error('This backup exceeds the current website limits.');
-    }
-  } catch (err) {
-    alert('Backup file could not be read: ' + err.message);
-    e.target.value = '';
-    return;
-  }
-
-  if (!tripRef || !ready) {
-    alert('The website is not connected to the trip database yet. Wait for the Connected status and try again.');
-    e.target.value = '';
-    return;
-  }
-
-  const importButton = $('importBtn');
-  importButton.disabled = true;
-  setSyncStatus('Restoring backup to Firebase… please keep this page open');
-
-  // Pause the live listener so an older snapshot cannot repaint the page
-  // while the import is being committed.
-  if (tripUnsubscribe) {
-    tripUnsubscribe();
-    tripUnsubscribe = null;
-  }
-
-  try {
-    await tripRef.set(imported);
-    state = imported;
-    ready = true;
-    render();
-    setSyncStatus('✓ Backup restored to Firebase — ' + state.people.length +
-      ' travellers and ' + state.expenses.length + ' expenses saved');
-    alert('Backup restored successfully to the shared trip. All friends will see the restored data.');
-
-    // Reattach only after the database write has completed. The first snapshot
-    // now reads the committed imported document rather than the previous state.
-    attachTripListener();
-  } catch (err) {
-    console.error('Backup import failed:', err);
-    setSyncStatus('Backup import failed: ' + (err.code || err.message || 'Unknown Firebase error'), true);
-    alert('Firebase could not save this backup. Error: ' + (err.code || err.message || 'Unknown error') +
-      '\\n\\nPlease send me this exact error message.');
-    attachTripListener();
-  } finally {
-    importButton.disabled = false;
-    e.target.value = '';
-  }
+    const v=JSON.parse(await e.target.files[0].text());
+    if (!Array.isArray(v.people) || !Array.isArray(v.expenses)) throw Error();
+    state=normaliseState(v); render(); await save();
+  } catch { alert('That backup file is not valid.'); }
+  e.target.value='';
 };
 $('reset').onclick = () => {
   if (confirm('Delete all travellers, expenses and paid settlements for EVERYONE using this trip? Export a backup first if needed.')) {
@@ -365,38 +370,27 @@ $('reset').onclick = () => {
   }
 };
 
-function attachTripListener() {
-  if (!tripRef) return;
-  tripUnsubscribe = tripRef.onSnapshot(async snap => {
-    if (snap.exists) {
-      state = normaliseState(snap.data());
-      ready = true;
-      render();
-      setSyncStatus('✓ Connected — shared trip is live');
-    } else {
-      // Seed only when the shared document genuinely does not exist.
-      try {
-        await tripRef.set(state);
-      } catch (err) {
-        console.error('Could not initialise trip document:', err);
-        setSyncStatus('Could not initialise Firebase document: ' + (err.code || err.message), true);
-      }
-    }
-  }, err => {
-    console.error(err);
-    setSyncStatus('Database access failed: ' + (err.code || err.message || 'check Firestore rules'), true);
-  });
-}
-
 function startFirebase() {
   try {
     firebase.initializeApp(firebaseConfig);
-    tripRef = firebase.firestore().doc(TRIP_DOC);
+    tripRef=firebase.firestore().doc(TRIP_DOC);
     setSyncStatus('Connecting to the shared trip…');
-    attachTripListener();
+    tripRef.onSnapshot(async snap => {
+      if (snap.exists) {
+        state=normaliseState(snap.data());
+        ready=true; render();
+        setSyncStatus('✓ Connected — shared trip is live');
+      } else {
+        // Seed the document only when it does not yet exist.
+        await tripRef.set(state);
+      }
+    }, err => {
+      console.error(err);
+      setSyncStatus('Database access failed. Update Firestore rules to allow the payments field.', true);
+    });
   } catch (err) {
     console.error(err);
-    setSyncStatus('Firebase setup error: ' + (err.code || err.message || 'check the web app configuration'), true);
+    setSyncStatus('Firebase setup error. Please check the Firebase web app configuration.', true);
   }
 }
 render();
