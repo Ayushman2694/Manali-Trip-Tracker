@@ -38,11 +38,17 @@ main{max-width:650px;margin:auto;padding:14px 14px 38px}.hero{position:relative;
  <section class="panel">
   <h2>➕ Add an expense</h2>
   <div class="field"><label>What was it for?</label><input id="desc" placeholder="e.g. Hotel, fuel, dinner"></div>
-  <div class="row">
-   <div class="field"><label>Amount (₹)</label><input id="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
-   <div class="field"><label>Paid by</label><select id="payer"></select></div>
+  <div class="field"><label>Total expense amount (₹)</label><input id="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+  <div class="field">
+   <label>How was the payment contributed?</label>
+   <select id="contributionMode">
+    <option value="equal">Split payment equally between contributors</option>
+    <option value="manual">Enter each person's contribution manually</option>
+   </select>
   </div>
-  <div class="field"><label>Split between</label><div id="splitPeople" class="checks"></div></div>
+  <div class="field"><label>Who contributed to this payment?</label><div id="contributorChecks" class="checks"></div></div>
+  <div class="field"><label>Contribution amounts</label><div id="contributorAmounts"></div><p class="hint" id="contributionHint">Choose contributors above. The total will be divided equally between them.</p></div>
+  <div class="field"><label>Split the expense between</label><div id="splitPeople" class="checks"></div></div>
   <button class="full" id="addExpense">Add expense</button>
  </section>
  <section class="panel">
@@ -80,9 +86,9 @@ const firebaseConfig = {
 
 const TRIP_DOC = "trips/manali2026";
 const $ = id => document.getElementById(id);
-const money = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
-let state = {people:['You','Friend 1','Friend 2','Friend 3'], expenses:[]};
-let db, tripRef, ready = false;
+const money = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits:2});
+let state = {people:['You','Friend 1','Friend 2','Friend 3'], expenses:[], payments:[]};
+let tripRef, ready = false, applyingRemote = false;
 
 function setSyncStatus(message, isError=false) {
   const el = $('syncStatus');
@@ -91,90 +97,243 @@ function setSyncStatus(message, isError=false) {
 function safe(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+function normaliseState(data) {
+  const next = {
+    people: Array.isArray(data.people) ? data.people : [],
+    expenses: Array.isArray(data.expenses) ? data.expenses : [],
+    payments: Array.isArray(data.payments) ? data.payments : []
+  };
+  next.expenses = next.expenses.map(e => {
+    if (Array.isArray(e.contributors) && e.contributors.length) return e;
+    // Preserve expenses created by the earlier single-payer version.
+    return {...e, contributors:[{person:e.payer, amount:Number(e.amount || 0)}]};
+  });
+  return next;
+}
 async function save() {
   if (!ready || !tripRef) return;
   setSyncStatus('Saving shared changes…');
-  try { await tripRef.set(state); setSyncStatus('✓ Synced — everyone sees the same trip data'); }
-  catch (err) { console.error(err); setSyncStatus('Could not save. Check internet and Firebase rules.', true); }
+  try {
+    await tripRef.set(state);
+    setSyncStatus('✓ Synced — everyone sees the same trip data');
+  } catch (err) {
+    console.error(err);
+    setSyncStatus('Could not save. Check your connection and Firestore rules (payments must be allowed).', true);
+  }
+}
+function selectedContributors() {
+  return [...document.querySelectorAll('#contributorChecks input:checked')].map(x => x.value);
+}
+function renderContributionInputs() {
+  const selected = selectedContributors();
+  const mode = $('contributionMode').value;
+  $('contributorAmounts').innerHTML = selected.length ? selected.map((person, i) => {
+    const equalValue = selected.length ? (Number($('amount').value || 0) / selected.length) : 0;
+    return `<div class="row" style="margin:7px 0;align-items:center">
+      <label style="flex:1;font-size:12px;color:var(--ink)">${safe(person)}</label>
+      <input aria-label="Contribution by ${safe(person)}" data-contribution="${safe(person)}" type="number" min="0" step="0.01" inputmode="decimal" placeholder="₹0.00" value="${mode==='equal' && $('amount').value ? (equalValue.toFixed(2)) : ''}" ${mode==='equal'?'readonly':''} style="max-width:155px">
+    </div>`;
+  }).join('') : '<p class="empty">Select at least one contributor.</p>';
+  $('contributionHint').textContent = mode === 'equal'
+    ? 'The total amount is divided equally between the selected contributors.'
+    : 'Enter each contribution. The sum must equal the total expense amount.';
 }
 function render() {
-  $('people').innerHTML = state.people.map((p,i) => `<div class="person"><input aria-label="Traveller name" data-person="${i}" value="${safe(p)}"><button class="danger" data-remove="${i}" title="Remove">×</button></div>`).join('') || '<p class="empty">Add at least one traveller.</p>';
+  $('people').innerHTML = state.people.map((p,i) =>
+    `<div class="person"><input aria-label="Traveller name" data-person="${i}" value="${safe(p)}"><button class="danger" data-remove="${i}" title="Remove">×</button></div>`
+  ).join('') || '<p class="empty">Add at least one traveller.</p>';
+
   document.querySelectorAll('[data-person]').forEach(el => el.onchange = () => {
-    let v = el.value.trim();
-    if (v && !state.people.some((p,i) => p.toLowerCase() === v.toLowerCase() && i !== +el.dataset.person)) { state.people[+el.dataset.person] = v; save(); }
-    else render();
+    const oldName = state.people[+el.dataset.person], v = el.value.trim();
+    if (!v || state.people.some((p,i) => p.toLowerCase() === v.toLowerCase() && i !== +el.dataset.person)) { render(); return; }
+    state.people[+el.dataset.person] = v;
+    // Update references in historical expenses and settlements when a traveller is renamed.
+    state.expenses.forEach(e => {
+      if (e.payer === oldName) e.payer = v;
+      (e.contributors || []).forEach(c => { if (c.person === oldName) c.person = v; });
+      e.split = (e.split || []).map(p => p === oldName ? v : p);
+    });
+    state.payments.forEach(p => { if (p.from === oldName) p.from = v; if (p.to === oldName) p.to = v; });
+    render(); save();
   });
+
   document.querySelectorAll('[data-remove]').forEach(el => el.onclick = () => {
-    let i = +el.dataset.remove;
-    if (state.expenses.some(e => e.payer === state.people[i] || e.split.includes(state.people[i]))) { alert('This traveller is included in an expense. Remove or edit those expenses first.'); return; }
+    const i = +el.dataset.remove, name = state.people[i];
+    if (state.expenses.some(e => e.payer === name || (e.contributors || []).some(c => c.person === name) || (e.split || []).includes(name)) ||
+        state.payments.some(p => p.from === name || p.to === name)) {
+      alert('This traveller is included in an expense or settlement. Remove those records first.'); return;
+    }
     state.people.splice(i,1); render(); save();
   });
-  $('payer').innerHTML = state.people.map(p => `<option value="${safe(p)}">${safe(p)}</option>`).join('');
-  $('splitPeople').innerHTML = state.people.map(p => `<label class="check"><input type="checkbox" value="${safe(p)}" checked> ${safe(p)}</label>`).join('');
-  const total = state.expenses.reduce((s,e) => s + Number(e.amount || 0), 0);
-  $('total').textContent = money(total); $('average').textContent = money(state.people.length ? total/state.people.length : 0);
+
+  const oldSelected = new Set(selectedContributors());
+  $('contributorChecks').innerHTML = state.people.map(p =>
+    `<label class="check"><input type="checkbox" value="${safe(p)}" ${oldSelected.has(p) || oldSelected.size===0 && p===state.people[0]?'checked':''}> ${safe(p)}</label>`
+  ).join('');
+  document.querySelectorAll('#contributorChecks input').forEach(cb => cb.onchange = renderContributionInputs);
+  $('splitPeople').innerHTML = state.people.map(p =>
+    `<label class="check"><input type="checkbox" value="${safe(p)}" checked> ${safe(p)}</label>`
+  ).join('');
+  renderContributionInputs();
+
+  const total = state.expenses.reduce((sum,e) => sum + Number(e.amount || 0), 0);
+  $('total').textContent = money(total);
+  $('average').textContent = money(state.people.length ? total/state.people.length : 0);
   $('expenseCount').textContent = state.expenses.length + ' items';
-  $('expenses').innerHTML = state.expenses.length ? state.expenses.slice().reverse().map(e =>
-    `<div class="expense"><div class="expense-top"><div><strong>${safe(e.desc)}</strong><small>Paid by ${safe(e.payer)} · Split: ${e.split.map(safe).join(', ')}</small></div><div class="amount">${money(e.amount)}</div></div><div style="text-align:right;margin-top:6px"><button class="danger" style="min-height:32px;padding:5px 10px;font-size:12px" data-exp-remove="${e.id}">Delete</button></div></div>`
-  ).join('') : '<p class="empty">No expenses added yet.</p>';
-  document.querySelectorAll('[data-exp-remove]').forEach(b => b.onclick = () => { state.expenses = state.expenses.filter(e => e.id !== b.dataset.expRemove); render(); save(); });
+
+  $('expenses').innerHTML = state.expenses.length ? state.expenses.slice().reverse().map(e => {
+    const contribs = (e.contributors && e.contributors.length)
+      ? e.contributors.map(c => `${safe(c.person)}: ${money(c.amount)}`).join(' · ')
+      : `Paid by ${safe(e.payer || 'Unknown')}`;
+    return `<div class="expense"><div class="expense-top"><div><strong>${safe(e.desc)}</strong><small>Contributed by ${contribs}<br>Split: ${(e.split || []).map(safe).join(', ')}</small></div><div class="amount">${money(e.amount)}</div></div><div style="text-align:right;margin-top:6px"><button class="danger" style="min-height:32px;padding:5px 10px;font-size:12px" data-exp-remove="${safe(e.id)}">Delete</button></div></div>`;
+  }).join('') : '<p class="empty">No expenses added yet.</p>';
+  document.querySelectorAll('[data-exp-remove]').forEach(b => b.onclick = () => {
+    state.expenses = state.expenses.filter(e => e.id !== b.dataset.expRemove); render(); save();
+  });
+
+  // Calculate net balances from expense contributions minus each person's share.
   const net = Object.fromEntries(state.people.map(p => [p,0]));
   state.expenses.forEach(e => {
-    if (net[e.payer] !== undefined) net[e.payer] += Number(e.amount || 0);
-    (e.split || []).forEach(p => { if (net[p] !== undefined && e.split.length) net[p] -= Number(e.amount || 0)/e.split.length; });
+    const contributors = (e.contributors && e.contributors.length)
+      ? e.contributors : [{person:e.payer, amount:Number(e.amount || 0)}];
+    contributors.forEach(c => { if (net[c.person] !== undefined) net[c.person] += Number(c.amount || 0); });
+    const split = e.split || [];
+    split.forEach(p => { if (net[p] !== undefined && split.length) net[p] -= Number(e.amount || 0)/split.length; });
   });
-  $('balances').innerHTML = state.people.length ? state.people.map(p => `<div class="balance"><span>${safe(p)}</span><strong class="${net[p]>=0?'positive':'negative'}">${net[p]>=0?'+':'−'}${money(Math.abs(net[p]))}</strong></div>`).join('') : '<p class="empty">Add travellers first.</p>';
+
+  // Recorded repayments reduce the outstanding balances and can be reversed by undoing them.
+  state.payments.forEach(p => {
+    if (net[p.from] !== undefined) net[p.from] += Number(p.amount || 0);
+    if (net[p.to] !== undefined) net[p.to] -= Number(p.amount || 0);
+  });
+
+  $('balances').innerHTML = state.people.length ? state.people.map(p =>
+    `<div class="balance"><span>${safe(p)}</span><strong class="${net[p]>=0?'positive':'negative'}">${net[p]>=0?'+':'−'}${money(Math.abs(net[p]))}</strong></div>`
+  ).join('') : '<p class="empty">Add travellers first.</p>';
+
   let creditors = state.people.map(p => ({p,v:net[p]})).filter(x => x.v > 0.005);
   let debtors = state.people.map(p => ({p,v:-net[p]})).filter(x => x.v > 0.005);
   let transfers = [], i=0, j=0;
   while (i < debtors.length && j < creditors.length) {
-    let x = Math.min(debtors[i].v, creditors[j].v);
-    if (x > 0.005) transfers.push(`${safe(debtors[i].p)} pays ${safe(creditors[j].p)} <strong>${money(x)}</strong>`);
-    debtors[i].v -= x; creditors[j].v -= x;
-    if (debtors[i].v < 0.005) i++; if (creditors[j].v < 0.005) j++;
+    const amount = Math.min(debtors[i].v, creditors[j].v);
+    if (amount > 0.005) transfers.push({from:debtors[i].p, to:creditors[j].p, amount});
+    debtors[i].v -= amount; creditors[j].v -= amount;
+    if (debtors[i].v < 0.005) i++;
+    if (creditors[j].v < 0.005) j++;
   }
-  $('settlements').innerHTML = transfers.length ? '<div style="margin-top:10px">' + transfers.map(t => `<div class="balance">${t}</div>`).join('') + '</div>' : '<p class="hint">Everyone is settled up.</p>';
+
+  const pendingHtml = transfers.length ? transfers.map((t,index) =>
+    `<div class="balance" style="align-items:center;flex-wrap:wrap">
+      <span>${safe(t.from)} pays ${safe(t.to)} <strong>${money(t.amount)}</strong></span>
+      <button class="secondary" style="min-height:34px;padding:7px 10px;font-size:11px" data-mark-paid="${index}">✓ Mark as paid</button>
+    </div>`
+  ).join('') : '<p class="hint">No pending settlements. Everyone is settled up.</p>';
+
+  const paidHtml = state.payments.length ? `
+    <div style="margin-top:14px">
+      <div class="section-kicker">Payments marked as paid</div>
+      ${state.payments.slice().reverse().map(p => `<div class="balance" style="align-items:center;flex-wrap:wrap">
+        <span><strong>${safe(p.from)}</strong> paid <strong>${safe(p.to)}</strong> ${money(p.amount)}<small style="display:block;color:var(--muted);margin-top:3px">${p.date ? new Date(p.date).toLocaleString() : 'Recorded payment'}</small></span>
+        <button class="danger" style="min-height:34px;padding:7px 10px;font-size:11px" data-undo-paid="${safe(p.id)}">Undo</button>
+      </div>`).join('')}
+    </div>` : '';
+
+  $('settlements').innerHTML = `<div class="section-kicker">Pending settlements</div>${pendingHtml}${paidHtml}`;
+  document.querySelectorAll('[data-mark-paid]').forEach(btn => btn.onclick = () => {
+    const t = transfers[Number(btn.dataset.markPaid)];
+    if (!t) return;
+    if (!confirm(`Mark ${t.from}'s payment of ${money(t.amount)} to ${t.to} as paid?`)) return;
+    state.payments.push({id:'pay_'+Date.now()+'_'+Math.random().toString(16).slice(2), from:t.from, to:t.to, amount:Number(t.amount.toFixed(2)), date:new Date().toISOString()});
+    render(); save();
+  });
+  document.querySelectorAll('[data-undo-paid]').forEach(btn => btn.onclick = () => {
+    if (!confirm('Undo this paid mark? The amount will return to pending settlements.')) return;
+    state.payments = state.payments.filter(p => p.id !== btn.dataset.undoPaid);
+    render(); save();
+  });
 }
+
+$('amount').addEventListener('input', () => { if ($('contributionMode').value === 'equal') renderContributionInputs(); });
+$('contributionMode').addEventListener('change', renderContributionInputs);
+
 $('addPerson').onclick = () => {
-  let v = $('newPerson').value.trim(); if (!v) return;
+  const v = $('newPerson').value.trim();
+  if (!v) return;
   if (state.people.some(p => p.toLowerCase() === v.toLowerCase())) { alert('That name is already added.'); return; }
   state.people.push(v); $('newPerson').value = ''; render(); save();
 };
+
 $('addExpense').onclick = () => {
-  let desc = $('desc').value.trim(), amount = Number($('amount').value), payer = $('payer').value;
-  let split = [...document.querySelectorAll('#splitPeople input:checked')].map(x => x.value);
-  if (!desc || !Number.isFinite(amount) || amount <= 0 || !payer || !split.length) { alert('Enter a description, a valid amount, payer and at least one person to split with.'); return; }
-  state.expenses.push({id:String(Date.now()) + Math.random().toString(16).slice(2), desc, amount, payer, split});
-  $('desc').value = ''; $('amount').value = ''; render(); save();
+  const desc = $('desc').value.trim(), total = Number($('amount').value);
+  const selected = selectedContributors();
+  const split = [...document.querySelectorAll('#splitPeople input:checked')].map(x => x.value);
+  if (!desc || !Number.isFinite(total) || total <= 0 || !selected.length || !split.length) {
+    alert('Enter a description, a valid total, at least one contributor and at least one person to split with.'); return;
+  }
+  let contributors;
+  if ($('contributionMode').value === 'equal') {
+    const each = Math.floor((total/selected.length)*100)/100;
+    let remainder = Math.round((total - each*selected.length)*100)/100;
+    contributors = selected.map((person,i) => ({person, amount:Number((each + (i===0?remainder:0)).toFixed(2))}));
+  } else {
+    contributors = selected.map(person => {
+      const input = document.querySelector(`[data-contribution="${CSS.escape(person)}"]`);
+      return {person, amount:Number(input ? input.value : 0)};
+    });
+    const sum = contributors.reduce((s,c) => s+c.amount,0);
+    if (contributors.some(c => !Number.isFinite(c.amount) || c.amount < 0) || Math.abs(sum-total) > 0.01) {
+      alert(`Contribution amounts must add up to the total expense (${money(total)}). Current total: ${money(sum)}.`); return;
+    }
+  }
+  state.expenses.push({
+    id:String(Date.now())+Math.random().toString(16).slice(2),
+    desc, amount:Number(total.toFixed(2)), contributors, payer:contributors[0].person, split
+  });
+  $('desc').value=''; $('amount').value='';
+  render(); save();
 };
+
 $('export').onclick = () => {
-  let a = document.createElement('a'), blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
-  a.href = URL.createObjectURL(blob); a.download = 'manali-trip-backup.json'; a.click(); URL.revokeObjectURL(a.href);
+  const a=document.createElement('a'), blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  a.href=URL.createObjectURL(blob); a.download='manali-trip-backup.json'; a.click(); URL.revokeObjectURL(a.href);
 };
 $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async e => {
-  try { let v = JSON.parse(await e.target.files[0].text()); if (!Array.isArray(v.people) || !Array.isArray(v.expenses)) throw Error(); state = v; render(); await save(); }
-  catch { alert('That backup file is not valid.'); } e.target.value = '';
+  try {
+    const v=JSON.parse(await e.target.files[0].text());
+    if (!Array.isArray(v.people) || !Array.isArray(v.expenses)) throw Error();
+    state=normaliseState(v); render(); await save();
+  } catch { alert('That backup file is not valid.'); }
+  e.target.value='';
 };
 $('reset').onclick = () => {
-  if (confirm('Delete all travellers and expenses for EVERYONE using this trip? Export a backup first if needed.')) { state = {people:[], expenses:[]}; render(); save(); }
-};
-function startFirebase() {
-  if (Object.values(firebaseConfig).some(v => String(v).startsWith('PASTE_'))) {
-    setSyncStatus('Setup needed: add your Firebase web app configuration to this HTML file.', true); render(); return;
+  if (confirm('Delete all travellers, expenses and paid settlements for EVERYONE using this trip? Export a backup first if needed.')) {
+    state={people:[],expenses:[],payments:[]}; render(); save();
   }
+};
+
+function startFirebase() {
   try {
     firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore(); tripRef = db.doc(TRIP_DOC);
+    tripRef=firebase.firestore().doc(TRIP_DOC);
     setSyncStatus('Connecting to the shared trip…');
     tripRef.onSnapshot(async snap => {
       if (snap.exists) {
-        const data = snap.data();
-        if (Array.isArray(data.people) && Array.isArray(data.expenses)) state = data;
-        ready = true; render(); setSyncStatus('✓ Connected — shared trip is live');
-      } else { await tripRef.set(state); }
-    }, err => { console.error(err); setSyncStatus('Database access failed. Check that Firestore rules were published.', true); });
-  } catch (err) { console.error(err); setSyncStatus('Firebase setup error. Please check the web app configuration.', true); }
+        state=normaliseState(snap.data());
+        ready=true; render();
+        setSyncStatus('✓ Connected — shared trip is live');
+      } else {
+        // Seed the document only when it does not yet exist.
+        await tripRef.set(state);
+      }
+    }, err => {
+      console.error(err);
+      setSyncStatus('Database access failed. Update Firestore rules to allow the payments field.', true);
+    });
+  } catch (err) {
+    console.error(err);
+    setSyncStatus('Firebase setup error. Please check the Firebase web app configuration.', true);
+  }
 }
 render();
 startFirebase();
