@@ -57,56 +57,128 @@ main{max-width:650px;margin:auto;padding:14px 14px 38px}.hero{position:relative;
  </section>
  <section class="panel">
   <h2>🔒 Your trip data</h2>
-  <p class="hint">Shared cloud trip data: expenses added by any group member are saved to MongoDB and appear on everyone's phones. Keep the trip password within your group. Updates are checked every 7 seconds.</p><p id="syncStatus" class="hint" role="status">Connecting to shared trip…</p>
+  <p id="syncStatus" class="hint">Connecting to shared trip…</p>
+  <p class="hint">Your trip data is shared online. Everyone using this link sees the same travellers, expenses and settlements.</p>
   <div class="actions"><button class="secondary" id="export">Export backup</button><button class="secondary" id="importBtn">Import backup</button><button class="danger" id="reset">Reset trip</button></div>
   <input id="importFile" type="file" accept="application/json" hidden>
  </section>
 <div class="footer-note">Made for the mountains and the memories · Manali Trip Crew</div>
 </main>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script>
-// After deploying your Cloudflare Worker, paste its URL here (include /api).
-const API_BASE='https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev/api';
-let state={people:[],expenses:[]};
-let token=sessionStorage.getItem('manaliTripToken')||'';
-let lastSynced='';
-const $=id=>document.getElementById(id), money=n=>'₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});
-function setSync(message){const el=$('syncStatus');if(el)el.textContent=message}
-async function request(path,options={}){const headers={'Content-Type':'application/json',...(options.headers||{})};if(token)headers.Authorization='Bearer '+token;const res=await fetch(API_BASE+path,{...options,headers});let data={};try{data=await res.json()}catch{}if(!res.ok){const err=new Error(data.error||'Request failed');err.status=res.status;throw err}return data}
-let saveQueue=Promise.resolve();
-function save(){render();const snapshot=JSON.stringify(state);saveQueue=saveQueue.then(()=>request('/trip',{method:'PUT',body:snapshot})).then(()=>{lastSynced=snapshot;setSync('✓ Saved to shared trip database')}).catch(err=>{setSync('Could not sync: '+err.message);alert('Your change could not be saved to the shared database. Please check your connection and try again.')});return saveQueue}
-async function startApp(){try{let data;try{data=await request('/trip')}catch(err){if(!token||err.status===401){token='';sessionStorage.removeItem('manaliTripToken')}else throw err}
- if(!token){const password=prompt('Enter your Manali trip group password:');if(password===null){setSync('Enter the group password to access shared expenses.');return}const login=await request('/login',{method:'POST',body:JSON.stringify({password})});token=login.token;sessionStorage.setItem('manaliTripToken',token);data=await request('/trip')}
- state={people:Array.isArray(data.people)?data.people:[],expenses:Array.isArray(data.expenses)?data.expenses:[]};lastSynced=JSON.stringify(state);render();setSync('✓ Connected to shared Manali trip database');
-}catch(err){setSync('Connection error: '+err.message+' — refresh the page to retry.')}}
-async function refreshShared(){if(!token||JSON.stringify(state)!==lastSynced)return;try{const remote=await request('/trip');const next={people:remote.people||[],expenses:remote.expenses||[]};if(JSON.stringify(next)!==lastSynced){state=next;lastSynced=JSON.stringify(state);render();setSync('↻ Updated with the latest group expenses')}}catch(err){if(err.message.toLowerCase().includes('token')){sessionStorage.removeItem('manaliTripToken');token='';setSync('Session expired. Refresh and enter the group password again.')}}}
 
-function safe(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function render(){
- $('people').innerHTML=state.people.map((p,i)=>`<div class="person"><input aria-label="Traveller name" data-person="${i}" value="${safe(p)}"><button class="danger" data-remove="${i}" title="Remove">×</button></div>`).join('')||'<p class="empty">Add at least one traveller.</p>';
- document.querySelectorAll('[data-person]').forEach(el=>el.onchange=()=>{let v=el.value.trim();if(v&&!state.people.some((p,i)=>p.toLowerCase()===v.toLowerCase()&&i!==+el.dataset.person)){state.people[+el.dataset.person]=v;save()}else render()});
- document.querySelectorAll('[data-remove]').forEach(el=>el.onclick=()=>{let i=+el.dataset.remove;if(state.expenses.some(e=>e.payer===state.people[i]||e.split.includes(state.people[i]))){alert('This traveller is included in an expense. Remove or edit those expenses first.');return}state.people.splice(i,1);save()});
- $('payer').innerHTML=state.people.map(p=>`<option value="${safe(p)}">${safe(p)}</option>`).join('');
- $('splitPeople').innerHTML=state.people.map((p,i)=>`<label class="check"><input type="checkbox" value="${safe(p)}" checked> ${safe(p)}</label>`).join('');
- const total=state.expenses.reduce((s,e)=>s+e.amount,0);$('total').textContent=money(total);$('average').textContent=money(state.people.length?total/state.people.length:0);
- $('expenseCount').textContent=state.expenses.length+' items';
- $('expenses').innerHTML=state.expenses.length?state.expenses.slice().reverse().map(e=>`<div class="expense"><div class="expense-top"><div><strong>${safe(e.desc)}</strong><small>Paid by ${safe(e.payer)} · Split: ${e.split.map(safe).join(', ')}</small></div><div class="amount">${money(e.amount)}</div></div><div style="text-align:right;margin-top:6px"><button class="danger" style="min-height:32px;padding:5px 10px;font-size:12px" data-exp-remove="${e.id}">Delete</button></div></div>`).join(''):'<p class="empty">No expenses added yet.</p>';
- document.querySelectorAll('[data-exp-remove]').forEach(b=>b.onclick=()=>{state.expenses=state.expenses.filter(e=>e.id!==b.dataset.expRemove);save()});
- const net=Object.fromEntries(state.people.map(p=>[p,0]));
- state.expenses.forEach(e=>{if(net[e.payer]!==undefined)net[e.payer]+=e.amount; e.split.forEach(p=>{if(net[p]!==undefined)net[p]-=e.amount/e.split.length})});
- $('balances').innerHTML=state.people.length?state.people.map(p=>`<div class="balance"><span>${safe(p)}</span><strong class="${net[p]>=0?'positive':'negative'}">${net[p]>=0?'+':'−'}${money(Math.abs(net[p]))}</strong></div>`).join(''):'<p class="empty">Add travellers first.</p>';
- let creditors=state.people.map(p=>({p,v:net[p]})).filter(x=>x.v>0.005).map(x=>({...x})),debtors=state.people.map(p=>({p,v:-net[p]})).filter(x=>x.v>0.005).map(x=>({...x}));
- let transfers=[];let i=0,j=0;while(i<debtors.length&&j<creditors.length){let x=Math.min(debtors[i].v,creditors[j].v);if(x>0.005)transfers.push(`${safe(debtors[i].p)} pays ${safe(creditors[j].p)} <strong>${money(x)}</strong>`);debtors[i].v-=x;creditors[j].v-=x;if(debtors[i].v<0.005)i++;if(creditors[j].v<0.005)j++}
- $('settlements').innerHTML=transfers.length?'<div style="margin-top:10px">'+transfers.map(t=>`<div class="balance">${t}</div>`).join('')+'</div>':'<p class="hint">Everyone is settled up.</p>';
+const firebaseConfig = {
+  apiKey: "AIzaSyAh1Qhfvegx2-ZoufHjAlbNwsvDoPPw7ds",
+  authDomain: "manali-trip-tracker.firebaseapp.com",
+  projectId: "manali-trip-tracker",
+  storageBucket: "manali-trip-tracker.firebasestorage.app",
+  messagingSenderId: "685494211132",
+  appId: "1:685494211132:web:fba6115d28bc619058e939",
+  measurementId: "G-B6YJHR21NG"
+};
+
+const TRIP_DOC = "trips/manali2026";
+const $ = id => document.getElementById(id);
+const money = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2});
+let state = {people:['You','Friend 1','Friend 2','Friend 3'], expenses:[]};
+let db, tripRef, ready = false;
+
+function setSyncStatus(message, isError=false) {
+  const el = $('syncStatus');
+  if (el) { el.textContent = message; el.style.color = isError ? '#b84b43' : '#72827b'; }
 }
-$('addPerson').onclick=()=>{let v=$('newPerson').value.trim();if(!v)return;if(state.people.some(p=>p.toLowerCase()===v.toLowerCase())){alert('That name is already added.');return}state.people.push(v);$('newPerson').value='';save()};
-$('addExpense').onclick=()=>{let desc=$('desc').value.trim(),amount=Number($('amount').value),payer=$('payer').value,split=[...document.querySelectorAll('#splitPeople input:checked')].map(x=>x.value);if(!desc||!Number.isFinite(amount)||amount<=0||!payer||!split.length){alert('Enter a description, a valid amount, payer and at least one person to split with.');return}state.expenses.push({id:String(Date.now())+Math.random().toString(16).slice(2),desc,amount,payer,split});$('desc').value='';$('amount').value='';save()};
-$('export').onclick=()=>{let a=document.createElement('a'),blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});a.href=URL.createObjectURL(blob);a.download='manali-trip-backup.json';a.click();URL.revokeObjectURL(a.href)};
-$('importBtn').onclick=()=>$('importFile').click();
-$('importFile').onchange=async e=>{try{let v=JSON.parse(await e.target.files[0].text());if(!Array.isArray(v.people)||!Array.isArray(v.expenses))throw Error();state=v;save()}catch{alert('That backup file is not valid.')}e.target.value=''};
-$('reset').onclick=()=>{if(confirm('Delete all travellers and expenses for the entire group? Export a backup first if needed.')){state={people:[],expenses:[]};save()}};
+function safe(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+async function save() {
+  if (!ready || !tripRef) return;
+  setSyncStatus('Saving shared changes…');
+  try { await tripRef.set(state); setSyncStatus('✓ Synced — everyone sees the same trip data'); }
+  catch (err) { console.error(err); setSyncStatus('Could not save. Check internet and Firebase rules.', true); }
+}
+function render() {
+  $('people').innerHTML = state.people.map((p,i) => `<div class="person"><input aria-label="Traveller name" data-person="${i}" value="${safe(p)}"><button class="danger" data-remove="${i}" title="Remove">×</button></div>`).join('') || '<p class="empty">Add at least one traveller.</p>';
+  document.querySelectorAll('[data-person]').forEach(el => el.onchange = () => {
+    let v = el.value.trim();
+    if (v && !state.people.some((p,i) => p.toLowerCase() === v.toLowerCase() && i !== +el.dataset.person)) { state.people[+el.dataset.person] = v; save(); }
+    else render();
+  });
+  document.querySelectorAll('[data-remove]').forEach(el => el.onclick = () => {
+    let i = +el.dataset.remove;
+    if (state.expenses.some(e => e.payer === state.people[i] || e.split.includes(state.people[i]))) { alert('This traveller is included in an expense. Remove or edit those expenses first.'); return; }
+    state.people.splice(i,1); render(); save();
+  });
+  $('payer').innerHTML = state.people.map(p => `<option value="${safe(p)}">${safe(p)}</option>`).join('');
+  $('splitPeople').innerHTML = state.people.map(p => `<label class="check"><input type="checkbox" value="${safe(p)}" checked> ${safe(p)}</label>`).join('');
+  const total = state.expenses.reduce((s,e) => s + Number(e.amount || 0), 0);
+  $('total').textContent = money(total); $('average').textContent = money(state.people.length ? total/state.people.length : 0);
+  $('expenseCount').textContent = state.expenses.length + ' items';
+  $('expenses').innerHTML = state.expenses.length ? state.expenses.slice().reverse().map(e =>
+    `<div class="expense"><div class="expense-top"><div><strong>${safe(e.desc)}</strong><small>Paid by ${safe(e.payer)} · Split: ${e.split.map(safe).join(', ')}</small></div><div class="amount">${money(e.amount)}</div></div><div style="text-align:right;margin-top:6px"><button class="danger" style="min-height:32px;padding:5px 10px;font-size:12px" data-exp-remove="${e.id}">Delete</button></div></div>`
+  ).join('') : '<p class="empty">No expenses added yet.</p>';
+  document.querySelectorAll('[data-exp-remove]').forEach(b => b.onclick = () => { state.expenses = state.expenses.filter(e => e.id !== b.dataset.expRemove); render(); save(); });
+  const net = Object.fromEntries(state.people.map(p => [p,0]));
+  state.expenses.forEach(e => {
+    if (net[e.payer] !== undefined) net[e.payer] += Number(e.amount || 0);
+    (e.split || []).forEach(p => { if (net[p] !== undefined && e.split.length) net[p] -= Number(e.amount || 0)/e.split.length; });
+  });
+  $('balances').innerHTML = state.people.length ? state.people.map(p => `<div class="balance"><span>${safe(p)}</span><strong class="${net[p]>=0?'positive':'negative'}">${net[p]>=0?'+':'−'}${money(Math.abs(net[p]))}</strong></div>`).join('') : '<p class="empty">Add travellers first.</p>';
+  let creditors = state.people.map(p => ({p,v:net[p]})).filter(x => x.v > 0.005);
+  let debtors = state.people.map(p => ({p,v:-net[p]})).filter(x => x.v > 0.005);
+  let transfers = [], i=0, j=0;
+  while (i < debtors.length && j < creditors.length) {
+    let x = Math.min(debtors[i].v, creditors[j].v);
+    if (x > 0.005) transfers.push(`${safe(debtors[i].p)} pays ${safe(creditors[j].p)} <strong>${money(x)}</strong>`);
+    debtors[i].v -= x; creditors[j].v -= x;
+    if (debtors[i].v < 0.005) i++; if (creditors[j].v < 0.005) j++;
+  }
+  $('settlements').innerHTML = transfers.length ? '<div style="margin-top:10px">' + transfers.map(t => `<div class="balance">${t}</div>`).join('') + '</div>' : '<p class="hint">Everyone is settled up.</p>';
+}
+$('addPerson').onclick = () => {
+  let v = $('newPerson').value.trim(); if (!v) return;
+  if (state.people.some(p => p.toLowerCase() === v.toLowerCase())) { alert('That name is already added.'); return; }
+  state.people.push(v); $('newPerson').value = ''; render(); save();
+};
+$('addExpense').onclick = () => {
+  let desc = $('desc').value.trim(), amount = Number($('amount').value), payer = $('payer').value;
+  let split = [...document.querySelectorAll('#splitPeople input:checked')].map(x => x.value);
+  if (!desc || !Number.isFinite(amount) || amount <= 0 || !payer || !split.length) { alert('Enter a description, a valid amount, payer and at least one person to split with.'); return; }
+  state.expenses.push({id:String(Date.now()) + Math.random().toString(16).slice(2), desc, amount, payer, split});
+  $('desc').value = ''; $('amount').value = ''; render(); save();
+};
+$('export').onclick = () => {
+  let a = document.createElement('a'), blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  a.href = URL.createObjectURL(blob); a.download = 'manali-trip-backup.json'; a.click(); URL.revokeObjectURL(a.href);
+};
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = async e => {
+  try { let v = JSON.parse(await e.target.files[0].text()); if (!Array.isArray(v.people) || !Array.isArray(v.expenses)) throw Error(); state = v; render(); await save(); }
+  catch { alert('That backup file is not valid.'); } e.target.value = '';
+};
+$('reset').onclick = () => {
+  if (confirm('Delete all travellers and expenses for EVERYONE using this trip? Export a backup first if needed.')) { state = {people:[], expenses:[]}; render(); save(); }
+};
+function startFirebase() {
+  if (Object.values(firebaseConfig).some(v => String(v).startsWith('PASTE_'))) {
+    setSyncStatus('Setup needed: add your Firebase web app configuration to this HTML file.', true); render(); return;
+  }
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore(); tripRef = db.doc(TRIP_DOC);
+    setSyncStatus('Connecting to the shared trip…');
+    tripRef.onSnapshot(async snap => {
+      if (snap.exists) {
+        const data = snap.data();
+        if (Array.isArray(data.people) && Array.isArray(data.expenses)) state = data;
+        ready = true; render(); setSyncStatus('✓ Connected — shared trip is live');
+      } else { await tripRef.set(state); }
+    }, err => { console.error(err); setSyncStatus('Database access failed. Check that Firestore rules were published.', true); });
+  } catch (err) { console.error(err); setSyncStatus('Firebase setup error. Please check the web app configuration.', true); }
+}
 render();
-startApp();
-setInterval(refreshShared,7000);
+startFirebase();
+
 </script>
 </body>
 </html>
