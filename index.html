@@ -88,7 +88,7 @@ const TRIP_DOC = "trips/manali2026";
 const $ = id => document.getElementById(id);
 const money = n => '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits:2});
 let state = {people:['You','Friend 1','Friend 2','Friend 3'], expenses:[], payments:[]};
-let tripRef, ready = false, applyingRemote = false;
+let tripRef, ready = false, applyingRemote = false, tripUnsubscribe = null;
 
 function setSyncStatus(message, isError=false) {
   const el = $('syncStatus');
@@ -299,12 +299,65 @@ $('export').onclick = () => {
 };
 $('importBtn').onclick = () => $('importFile').click();
 $('importFile').onchange = async e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  let imported;
   try {
-    const v=JSON.parse(await e.target.files[0].text());
-    if (!Array.isArray(v.people) || !Array.isArray(v.expenses)) throw Error();
-    state=normaliseState(v); render(); await save();
-  } catch { alert('That backup file is not valid.'); }
-  e.target.value='';
+    const parsed = JSON.parse(await file.text());
+    if (!parsed || !Array.isArray(parsed.people) || !Array.isArray(parsed.expenses)) {
+      throw new Error('The selected JSON does not contain valid people and expenses arrays.');
+    }
+    imported = normaliseState(parsed);
+    if (!Array.isArray(imported.payments)) imported.payments = [];
+    if (imported.people.length > 30 || imported.expenses.length > 500 || imported.payments.length > 500) {
+      throw new Error('This backup exceeds the current website limits.');
+    }
+  } catch (err) {
+    alert('Backup file could not be read: ' + err.message);
+    e.target.value = '';
+    return;
+  }
+
+  if (!tripRef || !ready) {
+    alert('The website is not connected to the trip database yet. Wait for the Connected status and try again.');
+    e.target.value = '';
+    return;
+  }
+
+  const importButton = $('importBtn');
+  importButton.disabled = true;
+  setSyncStatus('Restoring backup to Firebase… please keep this page open');
+
+  // Pause the live listener so an older snapshot cannot repaint the page
+  // while the import is being committed.
+  if (tripUnsubscribe) {
+    tripUnsubscribe();
+    tripUnsubscribe = null;
+  }
+
+  try {
+    await tripRef.set(imported);
+    state = imported;
+    ready = true;
+    render();
+    setSyncStatus('✓ Backup restored to Firebase — ' + state.people.length +
+      ' travellers and ' + state.expenses.length + ' expenses saved');
+    alert('Backup restored successfully to the shared trip. All friends will see the restored data.');
+
+    // Reattach only after the database write has completed. The first snapshot
+    // now reads the committed imported document rather than the previous state.
+    attachTripListener();
+  } catch (err) {
+    console.error('Backup import failed:', err);
+    setSyncStatus('Backup import failed: ' + (err.code || err.message || 'Unknown Firebase error'), true);
+    alert('Firebase could not save this backup. Error: ' + (err.code || err.message || 'Unknown error') +
+      '\\n\\nPlease send me this exact error message.');
+    attachTripListener();
+  } finally {
+    importButton.disabled = false;
+    e.target.value = '';
+  }
 };
 $('reset').onclick = () => {
   if (confirm('Delete all travellers, expenses and paid settlements for EVERYONE using this trip? Export a backup first if needed.')) {
@@ -312,27 +365,38 @@ $('reset').onclick = () => {
   }
 };
 
+function attachTripListener() {
+  if (!tripRef) return;
+  tripUnsubscribe = tripRef.onSnapshot(async snap => {
+    if (snap.exists) {
+      state = normaliseState(snap.data());
+      ready = true;
+      render();
+      setSyncStatus('✓ Connected — shared trip is live');
+    } else {
+      // Seed only when the shared document genuinely does not exist.
+      try {
+        await tripRef.set(state);
+      } catch (err) {
+        console.error('Could not initialise trip document:', err);
+        setSyncStatus('Could not initialise Firebase document: ' + (err.code || err.message), true);
+      }
+    }
+  }, err => {
+    console.error(err);
+    setSyncStatus('Database access failed: ' + (err.code || err.message || 'check Firestore rules'), true);
+  });
+}
+
 function startFirebase() {
   try {
     firebase.initializeApp(firebaseConfig);
-    tripRef=firebase.firestore().doc(TRIP_DOC);
+    tripRef = firebase.firestore().doc(TRIP_DOC);
     setSyncStatus('Connecting to the shared trip…');
-    tripRef.onSnapshot(async snap => {
-      if (snap.exists) {
-        state=normaliseState(snap.data());
-        ready=true; render();
-        setSyncStatus('✓ Connected — shared trip is live');
-      } else {
-        // Seed the document only when it does not yet exist.
-        await tripRef.set(state);
-      }
-    }, err => {
-      console.error(err);
-      setSyncStatus('Database access failed. Update Firestore rules to allow the payments field.', true);
-    });
+    attachTripListener();
   } catch (err) {
     console.error(err);
-    setSyncStatus('Firebase setup error. Please check the Firebase web app configuration.', true);
+    setSyncStatus('Firebase setup error: ' + (err.code || err.message || 'check the web app configuration'), true);
   }
 }
 render();
