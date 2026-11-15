@@ -47,6 +47,7 @@ main{max-width:650px;margin:auto;padding:14px 14px 38px}.hero{position:relative;
   <h2>➕ Add an expense</h2>
   <div class="field"><label>What was it for?</label><input id="desc" placeholder="e.g. Hotel, fuel, dinner"></div>
   <div class="field"><label>Total expense amount (₹)</label><input id="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+  <div class="field"><label>Payment type</label><select id="paymentType"><option value="cash">Cash / UPI</option><option value="card">Credit Card</option></select><p class="hint">Choose Credit Card for expenses you plan to settle after the trip.</p></div>
   <div class="field">
    <label>How was the payment contributed?</label>
    <select id="contributionMode">
@@ -132,7 +133,7 @@ async function save() {
     setSyncStatus('✓ Synced — everyone sees the same trip data');
   } catch (err) {
     console.error(err);
-    setSyncStatus('Could not save. Check your connection and Firestore rules (payments must be allowed).', true);
+    setSyncStatus('Could not save: ' + (err && err.message ? err.message : 'Unknown Firebase error'), true);
   }
 }
 function selectedContributors() {
@@ -357,7 +358,7 @@ $('addExpense').onclick = () => {
   }
   state.expenses.push({
     id:String(Date.now())+Math.random().toString(16).slice(2),
-    desc, amount:Number(total.toFixed(2)), contributors, payer:contributors[0].person, split, paymentType:$('paymentType').value
+    desc, amount:Number(total.toFixed(2)), contributors, payer:contributors[0].person, split, paymentType:($('paymentType') && $('paymentType').value === 'card') ? 'card' : 'cash'
   });
   $('desc').value=''; $('amount').value=''; contributionDraft = {};
   render(); save();
